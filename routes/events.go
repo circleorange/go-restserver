@@ -9,12 +9,10 @@ import (
 
 func getEvents(context *gin.Context) {
 	events, err := models.GetAllEvents()
-
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retireve all events"})
 		return
 	}
-
 	context.JSON(http.StatusOK, events)
 }
 
@@ -35,7 +33,6 @@ func getEvent(context *gin.Context) {
 
 func createEvent(context *gin.Context) {
 	var event models.Event
-
 	err := context.ShouldBindJSON(&event) // gin internally sets value from request to variable passed in
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "Failed to parse expected request data"})
@@ -43,23 +40,22 @@ func createEvent(context *gin.Context) {
 	}
 	event.ID = 1
 	event.UserID = 1
-
 	err = event.Save()
-
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save event"})
 		return
 	}
-
 	context.JSON(http.StatusCreated, gin.H{"message": "Event successully create", "event": event})
 }
 
 func updateEvent(context *gin.Context) {
+	// Get event ID
 	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "Invalid event ID"})
 		return
 	}
+	// Check event by ID exists
 	_, err = models.GetEventByID(eventId)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retireve event by ID"})
@@ -78,4 +74,23 @@ func updateEvent(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"message": "Event updated successfully"})
+}
+
+func deleteEvent(context *gin.Context) {
+	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"message": "Invalid event ID"})
+		return
+	}
+	event, err := models.GetEventByID(eventId)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retireve event by ID"})
+		return
+	}
+	err = event.Delete()
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to delete the event"})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully"})
 }

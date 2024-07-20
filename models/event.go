@@ -27,7 +27,7 @@ func (e Event) Save() error {
 	}
 	defer statement.Close()
 
-	// inserted in safe way, protected for SQL injections attacks
+	// inserted in safe way, protected from SQL injections attacks
 	result, err := statement.Exec(e.Name, e.Description, e.Location, e.DateTime, e.UserID)
 	if err != nil {
 		return err
@@ -86,5 +86,20 @@ func (e Event) Update() error {
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(e.Name, e.Description, e.Location, e.DateTime, e.ID)
+	return err
+}
+
+func (e Event) Delete() error {
+	query := `
+  DELETE From Events
+  WHERE id = ?
+  `
+	stmt, err := db.DB.Prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec()
+
 	return err
 }
