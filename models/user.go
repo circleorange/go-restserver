@@ -2,6 +2,8 @@ package models
 
 import (
 	"demo/restserver/db"
+	"demo/restserver/utils"
+	"errors"
 	"fmt"
 )
 
@@ -22,7 +24,12 @@ func (u User) Save() error {
 		return err
 	}
 	defer statement.Close()
-	result, err := statement.Exec(u.Email, u.Password)
+	hashedPassword, err := utils.HashPassword(u.Password)
+	if err != nil {
+		fmt.Println("User - Save() - Failed to hash password")
+		return err
+	}
+	result, err := statement.Exec(u.Email, hashedPassword)
 	if err != nil {
 		fmt.Println("User - Save() - Failed to execute statement")
 		return err
@@ -30,4 +37,23 @@ func (u User) Save() error {
 	userId, err := result.LastInsertId()
 	u.ID = userId
 	return err
+}
+
+func (u User) ValidateCredentials() error {
+	query := `
+  SELECT id, password
+  FROM Users
+  WHERE email = ?
+  `
+	row := db.DB.QueryRow(query, u.Email)
+	var retrievedPassword string
+	err := row.Scan(&u.ID, &retrievedPassword)
+	if err != nil {
+		return errors.New("Invalid credentials")
+	}
+	passwordIsValid := utils.CheckPassword(u.Password, retrievedPassword)
+	if !passwordIsValid {
+		return errors.New("Invalid credentials")
+	}
+	return nil
 }
