@@ -3,7 +3,6 @@ package main
 import (
 	"demo/restserver/db"
 	"demo/restserver/routes"
-
 	"github.com/gin-gonic/gin"
 )
 

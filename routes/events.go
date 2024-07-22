@@ -2,11 +2,9 @@ package routes
 
 import (
 	"demo/restserver/models"
-	"demo/restserver/utils"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
 )
 
 func getEvents(context *gin.Context) {
@@ -34,23 +32,14 @@ func getEvent(context *gin.Context) {
 }
 
 func createEvent(context *gin.Context) {
-	token := context.Request.Header.Get("Authorization")
-	if token == "" {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized request"})
-		return
-	}
-	err := utils.VerifyToken(token)
-	if err != nil {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "Token failed verification"})
-	}
 	var event models.Event
-	err = context.ShouldBindJSON(&event) // gin internally sets value from request to variable passed in
+	err := context.ShouldBindJSON(&event) // gin internally sets value from request to variable passed in
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "Failed to parse expected request data"})
 		return
 	}
-	event.ID = 1
-	event.UserID = 1
+	userID := context.GetInt64("userID")
+	event.UserID = userID
 	err = event.Save()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save event"})
@@ -60,16 +49,19 @@ func createEvent(context *gin.Context) {
 }
 
 func updateEvent(context *gin.Context) {
-	// Get event ID
-	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64)
+	eventId, err := strconv.ParseInt(context.Param("id"), 10, 64) // retrieve event ID
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"message": "Invalid event ID"})
 		return
 	}
-	// Check event by ID exists
-	_, err = models.GetEventByID(eventId)
+	event, err := models.GetEventByID(eventId) // check event by ID exists
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retireve event by ID"})
+		return
+	}
+	userID := context.GetInt64("userID")
+	if event.UserID != userID {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "Not authorized to update event"})
 		return
 	}
 	var updatedEvent models.Event
@@ -84,7 +76,7 @@ func updateEvent(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to update event"})
 		return
 	}
-	context.JSON(http.StatusOK, gin.H{"message": "Event updated successfully"})
+	context.JSON(http.StatusOK, gin.H{"message": "Event has been updated"})
 }
 
 func deleteEvent(context *gin.Context) {
@@ -98,10 +90,15 @@ func deleteEvent(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retireve event by ID"})
 		return
 	}
+	userID := context.GetInt64("userID")
+	if event.UserID != userID {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "Not authorized to delete event"})
+		return
+	}
 	err = event.Delete()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to delete the event"})
 		return
 	}
-	context.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully"})
+	context.JSON(http.StatusOK, gin.H{"message": "Event has been deleted"})
 }
